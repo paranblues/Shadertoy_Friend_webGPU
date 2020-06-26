@@ -1,2 +1,2 @@
-# Shadertoy_Friend_webGPU
+# Shadertoy_Friend_WebGPU
 When shadertoy became friends with webgpu...
