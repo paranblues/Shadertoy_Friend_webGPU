@@ -7,7 +7,7 @@
 </head>
 
 <body>
-    <canvas></canvas>
+    <canvas id="WebGPUCanvas"></canvas>
 </body>
 
 </html>
@@ -28,11 +28,22 @@
 <!-- #region webgpu-shader-module-transform -->
 <script>
 
+class GPUObjectDescriptorBase {
+    label // string;
+}
+
+class GPUShaderModuleDescriptor extends GPUObjectDescriptorBase {
+    code // Uint32Array | string;
+    label // string;
+
+    sourceMap // object;
+}
+
 class GPUShaderModuleDescriptorWithTransform extends GPUShaderModuleDescriptor {
 
-    source // GPUShaderSource;
+    source // GPUShaderSource
    
-    transform // (source: GPUShaderSource) => GPUShaderCode;
+    transform // (source: GPUShaderSource) => GPUShaderCode
 }
 
 class GPUDeviceWithShaderModuleDescriptorTransform extends GPUDevice {
@@ -54,7 +65,8 @@ const tmp = { code: "", label: undefined };
  * @params : { GPUDeviceWithShaderModuleDescriptorTransform, GPUShaderModuleDescriptorWithTransform }
  * @return : GPUShaderModule
  */
-function createShaderModule(this, desc) {
+function createShaderModule(GPUDeviceWithShaderModuleDescriptorTransform = this, desc) {
+
     if (desc.transform && desc.source) {
         tmp.code = desc.transform(desc.source);
     } else {
@@ -64,8 +76,10 @@ function createShaderModule(this, desc) {
     return originalCreateShaderModule.call(this, tmp);
 }
 
-function install() {
-    if (!navigator.gpu || originalCreateShaderModule === createShaderModule) {} return;
+function installLiveShaderModule() {
+    if (!navigator.gpu || originalCreateShaderModule === createShaderModule) {
+        return;
+    }
 
     GPUDevice.prototype.createShaderModule = createShaderModule;
 }
@@ -96,7 +110,7 @@ const cloneProgrammableStageDescriptor = descriptor => (descriptor && {
 /**
  * @params : { GPURasterizationStateDescriptor }
  */
-export const cloneRasterizationStateDescriptor = descriptor => (descriptor && {
+const cloneRasterizationStateDescriptor = descriptor => (descriptor && {
     frontFace: descriptor.frontFace,
     cullMode: descriptor.cullMode,
     depthBias: descriptor.depthBias,
@@ -565,7 +579,7 @@ class Client {
 /** 
  * @params : { OnShaderRegisteredCallback }
  */
-function install(onShaderRegistered) {
+function installLiveShaderModule(onShaderRegistered) {
     if (!navigator.gpu) {
         return;
     }
@@ -573,15 +587,10 @@ function install(onShaderRegistered) {
     installShaderCompilerLoader();
 
     const client = new Client({
-        
         createShaderModule: GPUDevice.prototype.createShaderModule,
-        
         createRenderPipeline: GPUDevice.prototype.createRenderPipeline,
-        
         createComputePipeline: GPUDevice.prototype.createComputePipeline,
-
         setRenderPipeline: GPURenderPassEncoder.prototype.setPipeline,
-        
         setComputePipeline: GPUComputePassEncoder.prototype.setPipeline,
     }, onShaderRegistered);
 
@@ -590,7 +599,7 @@ function install(onShaderRegistered) {
          * @params : { GPUDeviceWithShaderModuleDescriptorTransform, GPUShaderModuleDescriptorWithTransform }
          * @return : GPUShaderModule
          */
-        createShaderModule(this, descriptor) {
+        createShaderModule(GPUDeviceWithShaderModuleDescriptorTransform = this, descriptor) {
             return client.createShaderModule(this, descriptor);
         },
 
@@ -598,7 +607,7 @@ function install(onShaderRegistered) {
          * @params : { GPUDevice, GPURenderPipelineDescriptor }
          * @return : GPURenderPipeline
          */
-        createRenderPipeline(this, descriptor) {
+        createRenderPipeline(GPUDevice = this, descriptor) {
             return client.createRenderPipeline(this, descriptor);
         },
 
@@ -606,7 +615,7 @@ function install(onShaderRegistered) {
          * @params : { GPUDevice, GPUComputePipelineDescriptor }
          * @return : GPUComputePipeline
          */
-        createComputePipeline(this, descriptor) {
+        createComputePipeline(GPUDevice = this, descriptor) {
             return client.createComputePipeline(this, descriptor);
         }
     });
@@ -615,7 +624,7 @@ function install(onShaderRegistered) {
         /** 
          * @params : { GPURenderPassEncoder, GPURenderPipeline }
          */
-        setPipeline: function setRenderPipeline(this, pipeline) {
+        setPipeline: function setRenderPipeline(GPURenderPassEncoder = this, pipeline) {
             return client.setRenderPipeline(this, pipeline);
         }
     });
@@ -624,7 +633,7 @@ function install(onShaderRegistered) {
         /** 
          * @params : { GPUComputePassEncoder, GPUComputePipeline }
          */
-        setPipeline: function setComputePipeline(this, pipeline) {
+        setPipeline: function setComputePipeline(GPUComputePassEncoder = this, pipeline) {
             return client.setComputePipeline(this, pipeline);
         }
     });
@@ -636,6 +645,7 @@ function install(onShaderRegistered) {
 <script name="glslang">
 
 let glslang = undefined;
+let glslangModule = undefined;
 
 async function glslangInit() {
     if (glslang !== undefined) {
@@ -643,7 +653,7 @@ async function glslangInit() {
     }
     
     // @ts-ignore
-    const glslangModule = await import(/* webpackIgnore: true */ 'https://unpkg.com/@webgpu/glslang@0.0.15/dist/web-devel/glslang.js');
+    glslangModule = await import(/* webpackIgnore: true */ 'https://unpkg.com/@webgpu/glslang@0.0.15/dist/web-devel/glslang.js');
     glslang = await glslangModule.default();
 
     return glslang;
@@ -671,7 +681,7 @@ function checkWebGPUSupport() {
 /*
  * @params : { device, string, GPUTextureUsageFlags }
  */
-export async function createTextureFromImage(device, src, usage) {
+async function createTextureFromImage(device, src, usage) {
     const img = document.createElement('img');
     img.src = src;
     await img.decode();
@@ -752,7 +762,7 @@ export async function createTextureFromImage(device, src, usage) {
  * @param : { GPUDevice, GPUBuffer, number, Float32Array | Uint32Array, GPUCommandEncoder }
  * @return : { GPUCommandEncoder, GPUBuffer }
  */
-export function updateBufferData(
+function updateBufferData(
     device, dst, src, commandEncoder) {
     const [uploadBuffer, mapping] = device.createBufferMapped({
         size: src.byteLength
@@ -771,17 +781,15 @@ export function updateBufferData(
 
 </script>
 
-<script>
+<script name="example">
 
-// import glslangModule from '../glslang';
-
-export const title = 'Hello Triangle';
-export const description = 'Shows rendering a basic triangle.';
+const title = 'Hello Triangle';
+const description = 'Shows rendering a basic triangle.';
 
 /*
  * @param : { HTMLCanvasElement }
  */
-export async function init(canvas) {
+async function init(canvas) {
     const vertexShaderGLSL = `#version 450
         
         const vec2 pos[3] = vec2[3](vec2(0.0f, 0.5f), vec2(-0.5f, -0.5f), vec2(0.5f, -0.5f));
@@ -798,7 +806,10 @@ export async function init(canvas) {
 
     const adapter = await navigator.gpu.requestAdapter();
     const device = await adapter.requestDevice();
-    const glslang = await glslangModule();
+
+    await glslangInit();
+
+    // const glslang = await glslangModule();
 
     const context = canvas.getContext('gpupresent');
 
@@ -869,15 +880,30 @@ export async function init(canvas) {
 
 </script>
 
-<script>
+<script name="frame">
+
+async function load() {
+
+    const canvas = document.getElementById("WebGPUCanvas");
+
+    if (!canvas) {
+        return;
+    }
     
+    const frame = await init(canvas);
+
     function doFrame(timestamp) {
-        if (currentCanvas !== canvas) return;
 
         frame(timestamp);
+
         requestAnimationFrame(doFrame);
     }
 
     requestAnimationFrame(doFrame);
+}
+
+window.addEventListener('load', () => {
+    load(window.location.hash);
+});
 
 </script>
