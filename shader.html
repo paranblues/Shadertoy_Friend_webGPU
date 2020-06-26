@@ -19,8 +19,8 @@
     }
 
     canvas {
-        width: 80%;
-        height: 80%;;
+        width: 100%;
+        height: 100%;
     }
 
 </style>
@@ -801,7 +801,7 @@ async function init(canvas) {
         layout(location = 0) out vec4 outColor;
         
         void main() {
-            outColor = vec4(1.0, 0.0, 0.0, 1.0);
+            outColor = vec4(0.0, 1.0, 0.0, 1.0);
         }`;
 
     const adapter = await navigator.gpu.requestAdapter();
@@ -821,6 +821,8 @@ async function init(canvas) {
         device
         , format: swapChainFormat
     });
+
+    const sampleCount = 4;
 
     const pipeline = device.createRenderPipeline({
         layout: device.createPipelineLayout({ bindGroupLayouts: [] }),
@@ -852,8 +854,23 @@ async function init(canvas) {
         , colorStates: [{
             format: swapChainFormat,
         }]
+
+        , sampleCount
         
     });
+
+    const texture = device.createTexture({
+        size: {
+            width: canvas.width
+            , height: canvas.height
+            , depth: 1
+        }
+        , sampleCount
+        , format: swapChainFormat
+        , usage: GPUTextureUsage.OUTPUT_ATTACHMENT
+    });
+
+    const attachment = texture.createView();
 
     function frame() {
         const commandEncoder = device.createCommandEncoder({});
@@ -862,7 +879,8 @@ async function init(canvas) {
         // GPURenderPassDescriptor
         const renderPassDescriptor = {
             colorAttachments: [{
-                attachment: textureView
+                attachment: attachment // textureView
+                , resolveTarget: swapChain.getCurrentTexture().createView()
                 , loadValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
             }]
         };
