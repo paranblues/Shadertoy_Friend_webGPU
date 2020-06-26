@@ -793,6 +793,43 @@ async function init(canvas) {
 
     const numParticles = 1500;
 
+    const vertexShaderGLSL = 
+        `#version 450
+
+        layout(location = 0) in vec2 a_particlePos;
+        layout(location = 1) in vec2 a_particleVel;
+        layout(location = 2) in vec2 a_pos;
+        
+        void main() {
+            float angle = -atan(a_particleVel.x, a_particleVel.y);
+            vec2 pos = vec2(a_pos.x * cos(angle) - a_pos.y * sin(angle),
+                    a_pos.x * sin(angle) + a_pos.y * cos(angle));
+            gl_Position = vec4(pos + a_particlePos, 0, 1);
+        }`;
+
+        // `#version 450
+        
+        // const vec2 pos[3] = vec2[3](vec2(0.0f, 0.5f), vec2(-0.5f, -0.5f), vec2(0.5f, -0.5f));
+        //     void main() {
+        //     gl_Position = vec4(pos[gl_VertexIndex], 0.0, 1.0);
+        // }`;
+    
+    const fragmentShaderGLSL = 
+        `#version 450
+
+        layout(location = 0) out vec4 fragColor;
+
+        void main() {
+            fragColor = vec4(1.0);
+        }`;
+
+        // `#version 450
+        // layout(location = 0) out vec4 outColor;
+        
+        // void main() {
+        //     outColor = vec4(0.0, 1.0, 0.0, 1.0);
+        // }`;
+
     const computeShaderGLSL = 
         `#version 450
 
@@ -879,43 +916,6 @@ async function init(canvas) {
             // Write back
             particlesB.particles[index].vel = vVel;
         }`;
-
-    const vertexShaderGLSL = 
-        `#version 450
-
-        layout(location = 0) in vec2 a_particlePos;
-        layout(location = 1) in vec2 a_particleVel;
-        layout(location = 2) in vec2 a_pos;
-        
-        void main() {
-            float angle = -atan(a_particleVel.x, a_particleVel.y);
-            vec2 pos = vec2(a_pos.x * cos(angle) - a_pos.y * sin(angle),
-                    a_pos.x * sin(angle) + a_pos.y * cos(angle));
-            gl_Position = vec4(pos + a_particlePos, 0, 1);
-        }`;
-
-        // `#version 450
-        
-        // const vec2 pos[3] = vec2[3](vec2(0.0f, 0.5f), vec2(-0.5f, -0.5f), vec2(0.5f, -0.5f));
-        //     void main() {
-        //     gl_Position = vec4(pos[gl_VertexIndex], 0.0, 1.0);
-        // }`;
-    
-    const fragmentShaderGLSL = 
-        `#version 450
-
-        layout(location = 0) out vec4 fragColor;
-
-        void main() {
-            fragColor = vec4(1.0);
-        }`;
-
-        // `#version 450
-        // layout(location = 0) out vec4 outColor;
-        
-        // void main() {
-        //     outColor = vec4(0.0, 1.0, 0.0, 1.0);
-        // }`;
 
     const adapter = await navigator.gpu.requestAdapter();
     const device = await adapter.requestDevice();
