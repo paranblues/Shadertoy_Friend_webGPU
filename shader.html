@@ -304,10 +304,10 @@ function initializeRenderPipelineInfo(device, descriptor, obj) {
  */
 function initializeComputePipelineInfo(device, descriptor, obj) {
     if (INFO in obj) {
-        return (obj as GPUComputePipelineWithInfo)[INFO];
+        return obj[INFO];
     }
 
-    const info: GPUPipelineInfo = {
+    const info = { // GPUPipelineInfo
         device,
         descriptor,
         registrationGeneration: 0,
@@ -532,9 +532,9 @@ class Client {
         }
 
         if (vertexStageUpdated || fragmentStageUpdated) {
-            info.replacement = this._fn.createRenderPipeline.call(info.device, descriptor as GPURenderPipelineDescriptor);
+            info.replacement = this._fn.createRenderPipeline.call(info.device, descriptor /* GPURenderPipelineDescriptor */);
         } else if (computeStageUpdated) {
-            info.replacement = this._fn.createComputePipeline.call(info.device, descriptor as GPUComputePipelineDescriptor);
+            info.replacement = this._fn.createComputePipeline.call(info.device, descriptor /* GPUComputePipelineDescriptor */);
         }
     }
 
