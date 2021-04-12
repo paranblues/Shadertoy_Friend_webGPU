@@ -1,2 +1,3 @@
-# Shadertoy_Friend_WebGPU
-When shadertoy became friends with webgpu...
+# WebGPU compute shader
+
+WebGPU compute shader example
